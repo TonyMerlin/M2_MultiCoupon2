@@ -1,0 +1,13 @@
+<div class="merlin-multi-coupon-checkout" data-bind="visible: true">
+    <div class="title"><strong>Applied deal codes</strong></div>
+    <div class="content">
+        <!-- ko if: hasCodes() -->
+        <ul class="items" data-bind="foreach: codes">
+            <li class="item"><span data-bind="text: $data"></span></li>
+        </ul>
+        <!-- /ko -->
+        <!-- ko ifnot: hasCodes() -->
+        <div class="message">No Merlin multi-coupon deal codes are currently applied.</div>
+        <!-- /ko -->
+    </div>
+</div>
