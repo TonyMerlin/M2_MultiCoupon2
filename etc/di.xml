@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <type name="Magento\Quote\Model\Quote\Address\Total\Collector">
+        <arguments>
+            <argument name="totals" xsi:type="array">
+                <item name="merlin_multi_coupon_discount" xsi:type="array">
+                    <item name="class" xsi:type="string">Merlin\MultiCoupon\Model\Discount\MultiCoupon</item>
+                    <item name="after" xsi:type="string">subtotal</item>
+                    <item name="before" xsi:type="string">shipping_discount</item>
+                    <item name="sort_order" xsi:type="string">325</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Checkout\Model\CompositeConfigProvider">
+        <arguments>
+            <argument name="configProviders" xsi:type="array">
+                <item name="merlin_multi_coupon_config_provider" xsi:type="object">Merlin\MultiCoupon\Model\Checkout\ConfigProvider</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Quote\Api\CartTotalRepositoryInterface">
+        <plugin name="merlin_multi_coupon_totals_extension_attributes"
+                type="Merlin\MultiCoupon\Plugin\Checkout\CartTotalRepositoryPlugin"/>
+    </type>
+</config>
