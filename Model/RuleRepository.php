@@ -3,23 +3,32 @@ declare(strict_types=1);
 
 namespace Merlin\MultiCoupon\Model;
 
-use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
-use Magento\SalesRule\Model\Coupon;
+use Magento\Quote\Api\Data\CartInterface;
 use Magento\SalesRule\Model\ResourceModel\Coupon\CollectionFactory as CouponCollectionFactory;
 use Magento\SalesRule\Model\Rule;
 use Magento\Store\Model\StoreManagerInterface;
-use Magento\Quote\Api\Data\CartInterface;
 
 class RuleRepository
 {
+    /**
+     * @param CouponCollectionFactory $couponCollectionFactory
+     * @param StoreManagerInterface $storeManager
+     * @param Config $config
+     */
     public function __construct(
         private readonly CouponCollectionFactory $couponCollectionFactory,
         private readonly StoreManagerInterface $storeManager,
-        private readonly TimezoneInterface $timezone,
         private readonly Config $config
     ) {
     }
 
+    /**
+     * Load the active sales rule mapped to a coupon code for the current quote.
+     *
+     * @param CartInterface $quote
+     * @param string $code
+     * @return Rule|null
+     */
     public function getRuleByCode(CartInterface $quote, string $code): ?Rule
     {
         $code = $this->config->normalizeCode($code);
@@ -27,10 +36,8 @@ class RuleRepository
             return null;
         }
 
-        /** @var Coupon $coupon */
         $coupon = $this->couponCollectionFactory->create()
             ->addFieldToFilter('code', $code)
-            ->setPageSize(1)
             ->getFirstItem();
 
         if (!$coupon->getId() || !$coupon->getRuleId()) {
@@ -38,29 +45,14 @@ class RuleRepository
         }
 
         $rule = $coupon->getRule();
-        if (!$rule || !$rule->getId() || !(bool)$rule->getIsActive()) {
+        if (!$rule || !(bool)$rule->getIsActive()) {
             return null;
         }
 
         $websiteId = (int)$this->storeManager->getStore((int)$quote->getStoreId())->getWebsiteId();
-        $ruleWebsiteIds = array_map('intval', (array)$rule->getWebsiteIds());
-        if ($ruleWebsiteIds && !in_array($websiteId, $ruleWebsiteIds, true)) {
-            return null;
-        }
+        $websiteIds = array_map('intval', (array)$rule->getWebsiteIds());
 
-        $customerGroupId = (int)$quote->getCustomerGroupId();
-        $ruleCustomerGroupIds = array_map('intval', (array)$rule->getCustomerGroupIds());
-        if ($ruleCustomerGroupIds && !in_array($customerGroupId, $ruleCustomerGroupIds, true)) {
-            return null;
-        }
-
-        $today = $this->timezone->date()->format('Y-m-d');
-        $fromDate = (string)$rule->getFromDate();
-        $toDate = (string)$rule->getToDate();
-        if ($fromDate !== '' && $today < $fromDate) {
-            return null;
-        }
-        if ($toDate !== '' && $today > $toDate) {
+        if (!in_array($websiteId, $websiteIds, true)) {
             return null;
         }
 
