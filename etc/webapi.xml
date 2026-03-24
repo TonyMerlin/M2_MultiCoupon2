@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <route url="/V1/merlin-multi-coupon/mine" method="GET">
+        <service class="Merlin\MultiCoupon\Api\MultiCouponManagementInterface" method="getMyCodes"/>
+        <resources>
+            <resource ref="self"/>
+        </resources>
+    </route>
+    <route url="/V1/merlin-multi-coupon/mine/add/:code" method="POST">
+        <service class="Merlin\MultiCoupon\Api\MultiCouponManagementInterface" method="addForCustomer"/>
+        <resources>
+            <resource ref="self"/>
+        </resources>
+    </route>
+    <route url="/V1/merlin-multi-coupon/mine/remove/:code" method="POST">
+        <service class="Merlin\MultiCoupon\Api\MultiCouponManagementInterface" method="removeForCustomer"/>
+        <resources>
+            <resource ref="self"/>
+        </resources>
+    </route>
+    <route url="/V1/merlin-multi-coupon/mine/clear" method="POST">
+        <service class="Merlin\MultiCoupon\Api\MultiCouponManagementInterface" method="clearForCustomer"/>
+        <resources>
+            <resource ref="self"/>
+        </resources>
+    </route>
+</routes>
