@@ -1,12 +1,10 @@
 <?xml version="1.0"?>
 <schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
-
-    <table name="quote">
+    <table name="quote" resource="checkout">
         <column xsi:type="text" name="merlin_multi_coupon_codes" nullable="true" comment="Merlin Multi Coupon Codes"/>
     </table>
-
-    <table name="sales_order">
+    <table name="sales_order" resource="sales">
         <column xsi:type="text" name="merlin_multi_coupon_codes" nullable="true" comment="Merlin Multi Coupon Codes"/>
     </table>
 </schema>
