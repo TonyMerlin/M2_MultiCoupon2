@@ -8,18 +8,19 @@ use Magento\SalesRule\Model\Rule;
 
 class ItemRuleMatcher
 {
+    /**
+     * Determine whether the quote item matches the provided sales rule actions.
+     *
+     * @param AbstractItem $item
+     * @param Rule $rule
+     * @return bool
+     */
     public function isMatch(AbstractItem $item, Rule $rule): bool
     {
-        $product = $item->getProduct();
-        if (!$product || !$product->getId()) {
-            return false;
+        if (!$rule->getActions()) {
+            return true;
         }
 
-        $actions = $rule->getActions();
-        if ($actions && method_exists($actions, 'validate')) {
-            return (bool)$actions->validate($item);
-        }
-
-        return true;
+        return (bool)$rule->getActions()->validate($item);
     }
 }
