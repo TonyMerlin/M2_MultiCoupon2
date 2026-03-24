@@ -3,7 +3,7 @@
 $appliedCodes = $block->getAppliedCodes();
 $allowedCodes = $block->getAllowedCodes();
 ?>
-<div class="block discount merlin-multi-coupon" style="margin-top:20px; padding:16px; border:1px solid #dcdcdc;">
+<div class="block discount merlin-multi-coupon" style="margin-top:20px; padding:16px; border:1px solid #dcdcdc;" data-mage-init='{"merlinMultiCouponCart":{}}'>
     <div class="title"><strong><?= $block->escapeHtml(__('Apply multiple deal codes')) ?></strong></div>
     <div class="content">
         <p><?= $block->escapeHtml(__('Use this form for approved combined deal codes only: %1', implode(', ', $allowedCodes))) ?></p>
