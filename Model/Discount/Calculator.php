@@ -8,27 +8,24 @@ use Magento\SalesRule\Model\Rule;
 
 class Calculator
 {
+    /**
+     * Calculate the discount amount for an item under the provided sales rule.
+     *
+     * @param AbstractItem $item
+     * @param Rule $rule
+     * @return float
+     */
     public function calculate(AbstractItem $item, Rule $rule): float
     {
-        $qty = max(0.0, (float)$item->getTotalQty() ?: (float)$item->getQty());
-        $baseRowTotal = (float)$item->getBaseRowTotal();
-        if ($qty <= 0 || $baseRowTotal <= 0) {
-            return 0.0;
-        }
-
-        $alreadyDiscounted = abs((float)$item->getBaseDiscountAmount());
-        $discountableBase = max(0.0, $baseRowTotal - $alreadyDiscounted);
-        if ($discountableBase <= 0.0001) {
-            return 0.0;
-        }
-
+        $qty = (float)$item->getQty();
+        $rowTotal = (float)$item->getBaseRowTotal();
+        $discountAmount = (float)$rule->getDiscountAmount();
         $action = (string)$rule->getSimpleAction();
-        $amount = (float)$rule->getDiscountAmount();
 
         return match ($action) {
-            Rule::BY_PERCENT_ACTION => min($discountableBase, $discountableBase * ($amount / 100)),
-            Rule::BY_FIXED_ACTION => min($discountableBase, $amount * $qty),
-            Rule::CART_FIXED_ACTION => min($discountableBase, $amount * $qty),
+            'by_percent' => round($rowTotal * ($discountAmount / 100), 4),
+            'by_fixed' => min(round($discountAmount * $qty, 4), $rowTotal),
+            'cart_fixed' => min(round($discountAmount * $qty, 4), $rowTotal),
             default => 0.0,
         };
     }
