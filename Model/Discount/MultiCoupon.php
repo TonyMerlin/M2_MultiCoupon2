@@ -14,6 +14,13 @@ use Merlin\MultiCoupon\Model\RuleRepository;
 
 class MultiCoupon extends AbstractTotal
 {
+    /**
+     * @param QuoteCouponStorage $quoteCouponStorage
+     * @param RuleRepository $ruleRepository
+     * @param ItemRuleMatcher $itemRuleMatcher
+     * @param Calculator $calculator
+     * @param PriceCurrencyInterface $priceCurrency
+     */
     public function __construct(
         private readonly QuoteCouponStorage $quoteCouponStorage,
         private readonly RuleRepository $ruleRepository,
@@ -24,6 +31,14 @@ class MultiCoupon extends AbstractTotal
         $this->setCode('merlin_multi_coupon_discount');
     }
 
+    /**
+     * Collect and apply the best matching allowed coupon discount per item.
+     *
+     * @param Quote $quote
+     * @param Address $address
+     * @param Total $total
+     * @return $this
+     */
     public function collect(Quote $quote, Address $address, Total $total): self
     {
         parent::collect($quote, $address, $total);
@@ -95,6 +110,13 @@ class MultiCoupon extends AbstractTotal
         return $this;
     }
 
+    /**
+     * Return the total row metadata for the multi-coupon discount.
+     *
+     * @param Quote $quote
+     * @param Total $total
+     * @return array<string, mixed>
+     */
     public function fetch(Quote $quote, Total $total): array
     {
         $codes = $this->quoteCouponStorage->getCodes($quote);
@@ -110,6 +132,13 @@ class MultiCoupon extends AbstractTotal
         ];
     }
 
+    /**
+     * Reset the custom total amounts before re-collecting discounts.
+     *
+     * @param Address $address
+     * @param Total $total
+     * @return void
+     */
     private function resetAddressTotals(Address $address, Total $total): void
     {
         $total->setTotalAmount($this->getCode(), 0.0);
@@ -126,6 +155,11 @@ class MultiCoupon extends AbstractTotal
     }
 
     /**
+     * Return the best applicable discount result for a single quote item.
+     *
+     * @param Quote $quote
+     * @param AbstractItem $item
+     * @param string[] $codes
      * @return array{code:string,rule_id:int,base_amount:float,amount:float}
      */
     private function getBestDiscountForItem(Quote $quote, AbstractItem $item, array $codes): array
