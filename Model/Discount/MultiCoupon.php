@@ -4,14 +4,17 @@ declare(strict_types=1);
 namespace Merlin\MultiCoupon\Model\Discount;
 
 use Magento\Framework\Pricing\PriceCurrencyInterface;
+use Magento\Quote\Api\Data\ShippingAssignmentInterface;
 use Magento\Quote\Model\Quote;
-use Magento\Quote\Model\Quote\Address;
 use Magento\Quote\Model\Quote\Address\Total;
 use Magento\Quote\Model\Quote\Address\Total\AbstractTotal;
 use Magento\Quote\Model\Quote\Item\AbstractItem;
 use Merlin\MultiCoupon\Model\QuoteCouponStorage;
 use Merlin\MultiCoupon\Model\RuleRepository;
 
+/**
+ * Custom quote total for Merlin multi-coupon discounts.
+ */
 class MultiCoupon extends AbstractTotal
 {
     /**
@@ -35,19 +38,23 @@ class MultiCoupon extends AbstractTotal
      * Collect and apply the best matching allowed coupon discount per item.
      *
      * @param Quote $quote
-     * @param Address $address
+     * @param ShippingAssignmentInterface $shippingAssignment
      * @param Total $total
      * @return $this
      */
-    public function collect(Quote $quote, Address $address, Total $total): self
-    {
-        parent::collect($quote, $address, $total);
+    public function collect(
+        Quote $quote,
+        ShippingAssignmentInterface $shippingAssignment,
+        Total $total
+    ): self {
+        parent::collect($quote, $shippingAssignment, $total);
 
-        if (!$quote->getItemsCount()) {
+        $items = $shippingAssignment->getItems();
+        if (!$items || !$quote->getItemsCount()) {
             return $this;
         }
 
-        $this->resetAddressTotals($address, $total);
+        $this->resetAddressTotals($total, $items);
 
         $codes = $this->quoteCouponStorage->getCodes($quote);
         if (!$codes) {
@@ -59,7 +66,7 @@ class MultiCoupon extends AbstractTotal
         $baseDiscountTotal = 0.0;
         $discountTotal = 0.0;
 
-        foreach ($address->getAllItems() as $item) {
+        foreach ($items as $item) {
             if ($item->getParentItem()) {
                 continue;
             }
@@ -92,12 +99,16 @@ class MultiCoupon extends AbstractTotal
         $total->setDiscountAmount((float)$total->getDiscountAmount() - $discountTotal);
         $total->setBaseDiscountAmount((float)$total->getBaseDiscountAmount() - $baseDiscountTotal);
 
-        $description = implode(', ', array_values($appliedCodes));
-        $existingDescription = trim((string)$address->getDiscountDescription());
-        if ($existingDescription !== '') {
-            $description = $existingDescription . ', ' . $description;
+        $address = $shippingAssignment->getShipping()->getAddress();
+        if ($address) {
+            $description = implode(', ', array_values($appliedCodes));
+            $existingDescription = trim((string)$address->getDiscountDescription());
+            if ($existingDescription !== '') {
+                $description = $existingDescription . ', ' . $description;
+            }
+            $address->setDiscountDescription($description);
         }
-        $address->setDiscountDescription($description);
+
         $quote->setData(QuoteCouponStorage::FIELD, implode(',', $codes));
 
         $existingRuleIds = trim((string)$quote->getAppliedRuleIds());
@@ -135,16 +146,16 @@ class MultiCoupon extends AbstractTotal
     /**
      * Reset the custom total amounts before re-collecting discounts.
      *
-     * @param Address $address
      * @param Total $total
+     * @param AbstractItem[] $items
      * @return void
      */
-    private function resetAddressTotals(Address $address, Total $total): void
+    private function resetAddressTotals(Total $total, array $items): void
     {
         $total->setTotalAmount($this->getCode(), 0.0);
         $total->setBaseTotalAmount($this->getCode(), 0.0);
 
-        foreach ($address->getAllItems() as $item) {
+        foreach ($items as $item) {
             if ($item->getParentItem()) {
                 continue;
             }
