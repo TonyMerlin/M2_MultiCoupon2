@@ -1,0 +1,38 @@
+<?php
+declare(strict_types=1);
+
+namespace Merlin\MultiCoupon\Controller\Cart;
+
+use Magento\Framework\App\Action\HttpPostActionInterface;
+use Magento\Framework\Controller\Result\Redirect;
+use Magento\Framework\Controller\Result\RedirectFactory;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Message\ManagerInterface;
+use Merlin\MultiCoupon\Api\MultiCouponManagementInterface;
+
+class ClearCoupons implements HttpPostActionInterface
+{
+    public function __construct(
+        private readonly RedirectFactory $redirectFactory,
+        private readonly MultiCouponManagementInterface $management,
+        private readonly ManagerInterface $messageManager
+    ) {
+    }
+
+    public function execute(): Redirect
+    {
+        $redirect = $this->redirectFactory->create();
+        $redirect->setPath('checkout/cart');
+
+        try {
+            $response = $this->management->clearForCustomer();
+            $this->messageManager->addSuccessMessage(__($response->getMessage()));
+        } catch (LocalizedException $e) {
+            $this->messageManager->addErrorMessage($e->getMessage());
+        } catch (\Throwable $e) {
+            $this->messageManager->addErrorMessage(__('The coupon codes could not be cleared.'));
+        }
+
+        return $redirect;
+    }
+}
