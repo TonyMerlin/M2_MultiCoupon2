@@ -3,71 +3,125 @@ declare(strict_types=1);
 
 namespace Merlin\MultiCoupon\Model;
 
-use Magento\Framework\DataObject;
+use Magento\Checkout\Model\Session as CheckoutSession;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Quote\Api\CartRepositoryInterface;
 use Merlin\MultiCoupon\Api\Data\MultiCouponResponseInterface;
+use Merlin\MultiCoupon\Api\Data\MultiCouponResponseInterfaceFactory;
+use Merlin\MultiCoupon\Api\MultiCouponManagementInterface;
 
-class MultiCouponResponse extends DataObject implements MultiCouponResponseInterface
+class MultiCouponManagement implements MultiCouponManagementInterface
 {
     /**
-     * Return whether the operation succeeded.
-     *
-     * @return bool
+     * @param CheckoutSession $checkoutSession
+     * @param CartRepositoryInterface $cartRepository
+     * @param QuoteCouponStorage $quoteCouponStorage
+     * @param Config $config
+     * @param MultiCouponResponseInterfaceFactory $responseFactory
      */
-    public function getSuccess(): bool
-    {
-        return (bool)$this->getData(self::SUCCESS);
+    public function __construct(
+        private readonly CheckoutSession $checkoutSession,
+        private readonly CartRepositoryInterface $cartRepository,
+        private readonly QuoteCouponStorage $quoteCouponStorage,
+        private readonly Config $config,
+        private readonly MultiCouponResponseInterfaceFactory $responseFactory
+    ) {
     }
 
     /**
-     * Set whether the operation succeeded.
-     *
-     * @param bool $success
-     * @return MultiCouponResponseInterface
-     */
-    public function setSuccess(bool $success): MultiCouponResponseInterface
-    {
-        return $this->setData(self::SUCCESS, $success);
-    }
-
-    /**
-     * Return the operation message.
-     *
-     * @return string
-     */
-    public function getMessage(): string
-    {
-        return (string)$this->getData(self::MESSAGE);
-    }
-
-    /**
-     * Set the operation message.
-     *
-     * @param string $message
-     * @return MultiCouponResponseInterface
-     */
-    public function setMessage(string $message): MultiCouponResponseInterface
-    {
-        return $this->setData(self::MESSAGE, $message);
-    }
-
-    /**
-     * Return the applied coupon codes.
+     * Return the current quote's applied multi-coupon codes.
      *
      * @return string[]
      */
-    public function getCodes(): array
+    public function getMyCodes(): array
     {
-        return (array)$this->getData(self::CODES);
+        return $this->quoteCouponStorage->getCodes($this->getActiveQuote());
     }
 
     /**
-     * Set the applied coupon codes.
+     * Add a coupon code to the active quote.
      *
+     * @param string $code
+     * @return MultiCouponResponseInterface
+     */
+    public function addForCustomer(string $code): MultiCouponResponseInterface
+    {
+        $code = $this->config->normalizeCode($code);
+        if ($code === '' || !$this->config->isAllowedCode($code)) {
+            return $this->buildResponse(false, 'Coupon code is not allowed.', $this->getMyCodes());
+        }
+
+        $quote = $this->getActiveQuote();
+        $codes = $this->quoteCouponStorage->addCode($quote, $code);
+        $quote->collectTotals();
+        $this->cartRepository->save($quote);
+
+        return $this->buildResponse(true, 'Coupon code added.', $codes);
+    }
+
+    /**
+     * Remove a coupon code from the active quote.
+     *
+     * @param string $code
+     * @return MultiCouponResponseInterface
+     */
+    public function removeForCustomer(string $code): MultiCouponResponseInterface
+    {
+        $quote = $this->getActiveQuote();
+        $codes = $this->quoteCouponStorage->removeCode($quote, $code);
+        $quote->collectTotals();
+        $this->cartRepository->save($quote);
+
+        return $this->buildResponse(true, 'Coupon code removed.', $codes);
+    }
+
+    /**
+     * Clear all coupon codes from the active quote.
+     *
+     * @return MultiCouponResponseInterface
+     */
+    public function clearForCustomer(): MultiCouponResponseInterface
+    {
+        $quote = $this->getActiveQuote();
+        $this->quoteCouponStorage->clearCodes($quote);
+        $quote->collectTotals();
+        $this->cartRepository->save($quote);
+
+        return $this->buildResponse(true, 'Coupon codes cleared.', []);
+    }
+
+    /**
+     * Return the active checkout quote.
+     *
+     * @return \Magento\Quote\Api\Data\CartInterface
+     * @throws LocalizedException
+     */
+    private function getActiveQuote()
+    {
+        $quote = $this->checkoutSession->getQuote();
+        if (!$quote || !$quote->getId()) {
+            throw new LocalizedException(__('No active cart was found.'));
+        }
+
+        return $quote;
+    }
+
+    /**
+     * Build a service response payload.
+     *
+     * @param bool $success
+     * @param string $message
      * @param string[] $codes
      * @return MultiCouponResponseInterface
      */
-    public function setCodes(array $codes): MultiCouponResponseInterface
+    private function buildResponse(bool $success, string $message, array $codes): MultiCouponResponseInterface
     {
-        return $this->setData(self::CODES, array_values($codes));
+        /** @var MultiCouponResponseInterface $response */
+        $response = $this->responseFactory->create();
+        $response->setSuccess($success)
+            ->setMessage($message)
+            ->setCodes($codes);
+
+        return $response;
     }
 }
