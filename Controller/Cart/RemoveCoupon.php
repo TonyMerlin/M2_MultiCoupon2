@@ -35,12 +35,15 @@ class RemoveCoupon extends Action
     public function execute(): Redirect
     {
         $resultRedirect = $this->resultRedirectFactory->create();
-        $code = (string)$this->getRequest()->getParam('code');
+        $code = (string)($this->getRequest()->getParam('coupon_code') ?: $this->getRequest()->getParam('code'));
         $normalizedCode = $this->config->normalizeCode($code);
 
         $quote = $this->checkoutSession->getQuote();
         $this->quoteCouponStorage->removeCode($quote, $normalizedCode);
-        $quote->collectTotals()->save();
+
+        $quote->setTotalsCollectedFlag(false);
+        $quote->collectTotals();
+        $quote->save();
 
         $this->messageManager->addSuccessMessage(__('Coupon %1 was removed.', $normalizedCode));
         return $resultRedirect->setPath('checkout/cart');
