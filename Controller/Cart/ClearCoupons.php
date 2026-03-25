@@ -34,7 +34,10 @@ class ClearCoupons extends Action
         $resultRedirect = $this->resultRedirectFactory->create();
         $quote = $this->checkoutSession->getQuote();
         $this->quoteCouponStorage->clearCodes($quote);
-        $quote->collectTotals()->save();
+
+        $quote->setTotalsCollectedFlag(false);
+        $quote->collectTotals();
+        $quote->save();
 
         $this->messageManager->addSuccessMessage(__('All deal coupon codes were cleared.'));
         return $resultRedirect->setPath('checkout/cart');
