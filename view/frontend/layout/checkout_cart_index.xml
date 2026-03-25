@@ -3,6 +3,7 @@
       layout="1column"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
+        <referenceBlock name="checkout.cart.coupon" remove="true"/>
         <referenceContainer name="content">
             <block class="Merlin\MultiCoupon\Block\Cart\Coupons"
                    name="merlin.multi.coupon.cart"
