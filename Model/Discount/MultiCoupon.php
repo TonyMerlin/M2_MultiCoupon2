@@ -55,7 +55,7 @@ class MultiCoupon extends AbstractTotal
 
         $items = $shippingAssignment->getItems();
 
-        $this->logger->critical('Merlin MultiCoupon collect start', [
+        $this->logger->error('Merlin MultiCoupon collect start', [
             'quote_id' => $quote->getId(),
             'codes' => $this->quoteCouponStorage->getCodes($quote),
             'items_count' => is_array($items) ? count($items) : 0,
@@ -64,7 +64,7 @@ class MultiCoupon extends AbstractTotal
         ]);
 
         if (!$items || !$quote->getItemsCount()) {
-            $this->logger->critical('Merlin MultiCoupon collect aborted: no items', [
+            $this->logger->error('Merlin MultiCoupon collect aborted: no items', [
                 'quote_id' => $quote->getId(),
                 'quote_items_count' => $quote->getItemsCount()
             ]);
@@ -73,7 +73,7 @@ class MultiCoupon extends AbstractTotal
 
         $codes = $this->quoteCouponStorage->getCodes($quote);
         if (!$codes) {
-            $this->logger->critical('Merlin MultiCoupon collect aborted: no codes on quote', [
+            $this->logger->error('Merlin MultiCoupon collect aborted: no codes on quote', [
                 'quote_id' => $quote->getId()
             ]);
             return $this;
@@ -91,7 +91,7 @@ class MultiCoupon extends AbstractTotal
                 continue;
             }
 
-            $this->logger->critical('Merlin MultiCoupon item loop', [
+            $this->logger->error('Merlin MultiCoupon item loop', [
                 'quote_id' => $quote->getId(),
                 'item_id' => $item->getId(),
                 'sku' => $item->getSku(),
@@ -104,7 +104,7 @@ class MultiCoupon extends AbstractTotal
 
             $best = $this->getBestDiscountForItem($quote, $item, $codes);
 
-            $this->logger->critical('Merlin MultiCoupon best result for item', [
+            $this->logger->error('Merlin MultiCoupon best result for item', [
                 'quote_id' => $quote->getId(),
                 'item_id' => $item->getId(),
                 'sku' => $item->getSku(),
@@ -134,7 +134,7 @@ class MultiCoupon extends AbstractTotal
             }
         }
 
-        $this->logger->critical('Merlin MultiCoupon totals after item loop', [
+        $this->logger->error('Merlin MultiCoupon totals after item loop', [
             'quote_id' => $quote->getId(),
             'base_discount_total' => $baseDiscountTotal,
             'discount_total' => $discountTotal,
@@ -171,7 +171,7 @@ class MultiCoupon extends AbstractTotal
         )));
         $quote->setAppliedRuleIds(implode(',', $mergedRuleIds));
 
-        $this->logger->critical('Merlin MultiCoupon collect applied totals', [
+        $this->logger->error('Merlin MultiCoupon collect applied totals', [
             'quote_id' => $quote->getId(),
             'total_code' => $this->getCode(),
             'discount_total_amount' => $total->getTotalAmount($this->getCode()),
@@ -196,7 +196,7 @@ class MultiCoupon extends AbstractTotal
         $codes = $this->quoteCouponStorage->getCodes($quote);
         $discountAmount = (float)$total->getTotalAmount($this->getCode());
 
-        $this->logger->critical('Merlin MultiCoupon fetch', [
+        $this->logger->error('Merlin MultiCoupon fetch', [
             'quote_id' => $quote->getId(),
             'codes' => $codes,
             'discount_amount' => $discountAmount
@@ -254,7 +254,7 @@ class MultiCoupon extends AbstractTotal
         foreach ($codes as $code) {
             $rule = $this->ruleRepository->getRuleByCode($quote, $code);
 
-            $this->logger->critical('Merlin MultiCoupon rule lookup', [
+            $this->logger->error('Merlin MultiCoupon rule lookup', [
                 'quote_id' => $quote->getId(),
                 'item_id' => $item->getId(),
                 'sku' => $item->getSku(),
@@ -271,7 +271,7 @@ class MultiCoupon extends AbstractTotal
 
             $matched = $this->itemRuleMatcher->isMatch($item, $rule);
 
-            $this->logger->critical('Merlin MultiCoupon match result', [
+            $this->logger->error('Merlin MultiCoupon match result', [
                 'quote_id' => $quote->getId(),
                 'item_id' => $item->getId(),
                 'sku' => $item->getSku(),
@@ -286,7 +286,7 @@ class MultiCoupon extends AbstractTotal
 
             $baseAmount = $this->calculator->calculate($item, $rule);
 
-            $this->logger->critical('Merlin MultiCoupon calculated amount', [
+            $this->logger->error('Merlin MultiCoupon calculated amount', [
                 'quote_id' => $quote->getId(),
                 'item_id' => $item->getId(),
                 'sku' => $item->getSku(),
