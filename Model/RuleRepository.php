@@ -41,7 +41,7 @@ class RuleRepository
         $code = $this->config->normalizeCode($code);
 
         if ($code === '' || !$this->config->isAllowedCode($code)) {
-            $this->logger->critical('Merlin MultiCoupon rule lookup rejected by config', [
+            $this->logger->error('Merlin MultiCoupon rule lookup rejected by config', [
                 'original_code' => $originalCode,
                 'normalized_code' => $code
             ]);
@@ -53,7 +53,7 @@ class RuleRepository
             ->getFirstItem();
 
         if (!$coupon->getId() || !$coupon->getRuleId()) {
-            $this->logger->critical('Merlin MultiCoupon coupon not found', [
+            $this->logger->error('Merlin MultiCoupon coupon not found', [
                 'code' => $code
             ]);
             return null;
@@ -63,7 +63,7 @@ class RuleRepository
         $rule = $this->ruleFactory->create()->load((int)$coupon->getRuleId());
 
         if (!(int)$rule->getId()) {
-            $this->logger->critical('Merlin MultiCoupon rule failed to load by rule_id', [
+            $this->logger->error('Merlin MultiCoupon rule failed to load by rule_id', [
                 'code' => $code,
                 'coupon_id' => $coupon->getId(),
                 'coupon_rule_id' => $coupon->getRuleId()
@@ -72,7 +72,7 @@ class RuleRepository
         }
 
         if (!(bool)$rule->getIsActive()) {
-            $this->logger->critical('Merlin MultiCoupon rule inactive', [
+            $this->logger->error('Merlin MultiCoupon rule inactive', [
                 'code' => $code,
                 'rule_id' => $rule->getId()
             ]);
@@ -82,7 +82,7 @@ class RuleRepository
         $websiteId = (int)$this->storeManager->getStore((int)$quote->getStoreId())->getWebsiteId();
         $websiteIds = array_map('intval', (array)$rule->getWebsiteIds());
 
-        $this->logger->critical('Merlin MultiCoupon repository website check', [
+        $this->logger->error('Merlin MultiCoupon repository website check', [
             'code' => $code,
             'rule_id' => $rule->getId(),
             'quote_store_id' => (int)$quote->getStoreId(),
@@ -91,7 +91,7 @@ class RuleRepository
         ]);
 
         if ($websiteIds && !in_array($websiteId, $websiteIds, true)) {
-            $this->logger->critical('Merlin MultiCoupon rule rejected by website mismatch', [
+            $this->logger->error('Merlin MultiCoupon rule rejected by website mismatch', [
                 'code' => $code,
                 'rule_id' => $rule->getId(),
                 'quote_website_id' => $websiteId,
