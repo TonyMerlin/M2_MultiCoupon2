@@ -4,21 +4,23 @@ $appliedCodes = $block->getAppliedCodes();
 $allowedCodes = $block->getAllowedCodes();
 ?>
 <div class="block discount merlin-multi-coupon" style="margin-top:20px; padding:16px; border:1px solid #dcdcdc;" data-mage-init='{"merlinMultiCouponCart":{}}'>
-    <div class="title"><strong><?= $block->escapeHtml(__('Apply multiple deal codes')) ?></strong></div>
+    <div class="title"><strong><u><?= $block->escapeHtml(__('Apply Multiple Discount Codes')) ?></u></strong></div>
     <div class="content">
-        <p><?= $block->escapeHtml(__('Use this form for approved combined deal codes only: %1', implode(', ', $allowedCodes))) ?></p>
-
+</br>
+        <p><?= $block->escapeHtml(__('Use this form to add multiple discount codes, add each code one at a time ')) ?></p>
+        <p><?= $block->escapeHtml(__('** Only applicable codes can be used here.')) ?></p>
+</br>
         <form class="form form-discount" action="<?= $block->escapeUrl($block->getAddUrl()) ?>" method="post">
             <?= /* @noEscape */ $block->getBlockHtml('formkey') ?>
             <div class="field">
-                <label for="merlin_multi_coupon_code"><span><?= $block->escapeHtml(__('Coupon Code')) ?></span></label>
+                <label for="merlin_multi_coupon_code"><span><?= $block->escapeHtml(__('Discount Code')) ?></span></label>
                 <div class="control">
                     <input type="text" name="coupon_code" id="merlin_multi_coupon_code" class="input-text" />
                 </div>
             </div>
             <div class="actions-toolbar" style="margin-top:10px;">
                 <div class="primary">
-                    <button class="action apply primary" type="submit"><span><?= $block->escapeHtml(__('Add Deal Code')) ?></span></button>
+                    <button class="action apply primary" type="submit"><span><strong><?= $block->escapeHtml(__('Add Discount Code')) ?></strong></span></button>
                 </div>
             </div>
         </form>
@@ -41,7 +43,7 @@ $allowedCodes = $block->getAllowedCodes();
 
                 <form action="<?= $block->escapeUrl($block->getClearUrl()) ?>" method="post">
                     <?= /* @noEscape */ $block->getBlockHtml('formkey') ?>
-                    <button class="action secondary" type="submit"><span><?= $block->escapeHtml(__('Clear All Deal Codes')) ?></span></button>
+                    <button class="action secondary" type="submit"><span><strong><?= $block->escapeHtml(__('Clear All Discount Codes')) ?></strong></span></button>
                 </form>
             </div>
         <?php endif; ?>
