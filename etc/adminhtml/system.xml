@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="merlin_multicoupon"
+                 translate="label"
+                 sortOrder="900"
+                 showInDefault="1"
+                 showInWebsite="1"
+                 showInStore="1">
+            <label>Merlin Multi Coupon</label>
+            <tab>sales</tab>
+            <resource>Merlin_MultiCoupon::config</resource>
+
+            <group id="general"
+                   translate="label"
+                   sortOrder="10"
+                   showInDefault="1"
+                   showInWebsite="1"
+                   showInStore="1">
+                <label>General</label>
+
+                <field id="enabled"
+                       translate="label comment"
+                       type="select"
+                       sortOrder="10"
+                       showInDefault="1"
+                       showInWebsite="1"
+                       showInStore="1">
+                    <label>Enable Multi Coupon</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable or disable Merlin Multi Coupon functionality storefront-wide.</comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

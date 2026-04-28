@@ -43,6 +43,14 @@ class AddCoupon extends Action
         $source = (string)$this->getRequest()->getParam('source');
         $productId = (int)$this->getRequest()->getParam('product_id');
 
+        $quote = $this->checkoutSession->getQuote();
+        $storeId = $quote && $quote->getId() ? (int)$quote->getStoreId() : (int)$this->_storeManager->getStore()->getId();
+
+        if (!$this->config->isEnabled($storeId)) {
+            $this->messageManager->addErrorMessage(__('Multi coupon is currently disabled.'));
+            return $resultRedirect->setUrl($this->_redirect->getRefererUrl());
+        }
+
         $normalizedCode = $this->config->normalizeCode($code);
 
         if ($normalizedCode === '' || !$this->config->isAllowedCode($normalizedCode)) {

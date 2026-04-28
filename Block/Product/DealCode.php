@@ -9,6 +9,7 @@ use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Framework\Registry;
 use Magento\Framework\View\Element\Template;
+use Merlin\MultiCoupon\Model\Config;
 
 class DealCode extends Template
 {
@@ -18,7 +19,8 @@ class DealCode extends Template
      * @param CheckoutSession $checkoutSession
      * @param ProductRepositoryInterface $productRepository
      * @param EavConfig $eavConfig
-     * @param array $data
+     * @param Config $config
+     * @param array<string, mixed> $data
      */
     public function __construct(
         Template\Context $context,
@@ -26,9 +28,20 @@ class DealCode extends Template
         private readonly CheckoutSession $checkoutSession,
         private readonly ProductRepositoryInterface $productRepository,
         private readonly EavConfig $eavConfig,
+        private readonly Config $config,
         array $data = []
     ) {
         parent::__construct($context, $data);
+    }
+
+    /**
+     * Determine whether the product-page deal-code block should be shown.
+     *
+     * @return bool
+     */
+    public function canShow(): bool
+    {
+        return $this->config->isEnabled((int)$this->_storeManager->getStore()->getId());
     }
 
     /**
@@ -38,6 +51,10 @@ class DealCode extends Template
      */
     public function getProduct(): ?ProductInterface
     {
+        if (!$this->canShow()) {
+            return null;
+        }
+
         $product = $this->registry->registry('current_product');
         return $product instanceof ProductInterface ? $product : null;
     }
@@ -49,6 +66,10 @@ class DealCode extends Template
      */
     public function getDealCode(): ?string
     {
+        if (!$this->canShow()) {
+            return null;
+        }
+
         $product = $this->getProduct();
         if (!$product || !(int)$product->getId()) {
             return null;
@@ -84,7 +105,7 @@ class DealCode extends Template
 
         $label = strtoupper(trim($label));
 
-        return in_array($label, ['DEAL5', 'DEAL10', 'DEAL15', 'DEAL20', 'DEAL25'], true)
+        return in_array($label, $this->config->getAllowedCodes(), true)
             ? $label
             : null;
     }
@@ -96,14 +117,12 @@ class DealCode extends Template
      */
     public function getDealCodeLabel(): ?string
     {
-        return match ($this->getDealCode()) {
-            'DEAL5' => 'Extra 5% OFF',
-            'DEAL10' => 'Extra 10% OFF',
-            'DEAL15' => 'Extra 15% OFF',
-            'DEAL20' => 'Extra 20% OFF',
-            'DEAL25' => 'Extra 25% OFF',
-            default => null,
-        };
+        $code = $this->getDealCode();
+        if ($code === null) {
+            return null;
+        }
+
+        return $this->config->getDealCodeLabel($code);
     }
 
     /**
@@ -113,6 +132,10 @@ class DealCode extends Template
      */
     public function isOfferCouponApplied(): bool
     {
+        if (!$this->canShow()) {
+            return false;
+        }
+
         return str_starts_with(
             (string)$this->checkoutSession->getQuote()->getCouponCode(),
             'OFFER-'
@@ -124,8 +147,22 @@ class DealCode extends Template
      *
      * @return string
      */
-   public function getApplyUrl(): string
-{
-    return $this->getUrl('multicoupon/cart/addcoupon');
-}
+    public function getApplyUrl(): string
+    {
+        return $this->getUrl('multicoupon/cart/addcoupon');
+    }
+
+    /**
+     * Suppress block output when the module is disabled.
+     *
+     * @return string
+     */
+    protected function _toHtml(): string
+    {
+        if (!$this->canShow()) {
+            return '';
+        }
+
+        return parent::_toHtml();
+    }
 }

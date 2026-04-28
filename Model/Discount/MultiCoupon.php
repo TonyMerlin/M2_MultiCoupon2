@@ -10,6 +10,7 @@ use Magento\Quote\Model\Quote\Address;
 use Magento\Quote\Model\Quote\Address\Total;
 use Magento\Quote\Model\Quote\Address\Total\AbstractTotal;
 use Magento\Quote\Model\Quote\Item\AbstractItem;
+use Merlin\MultiCoupon\Model\Config;
 use Merlin\MultiCoupon\Model\QuoteCouponStorage;
 use Merlin\MultiCoupon\Model\RuleRepository;
 use Psr\Log\LoggerInterface;
@@ -26,6 +27,7 @@ class MultiCoupon extends AbstractTotal
      * @param Calculator $calculator
      * @param PriceCurrencyInterface $priceCurrency
      * @param LoggerInterface $logger
+     * @param Config $config
      */
     public function __construct(
         private readonly QuoteCouponStorage $quoteCouponStorage,
@@ -33,7 +35,8 @@ class MultiCoupon extends AbstractTotal
         private readonly ItemRuleMatcher $itemRuleMatcher,
         private readonly Calculator $calculator,
         private readonly PriceCurrencyInterface $priceCurrency,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly Config $config
     ) {
         $this->setCode('merlin_multi_coupon_discount');
     }
@@ -52,6 +55,10 @@ class MultiCoupon extends AbstractTotal
         Total $total
     ): self {
         parent::collect($quote, $shippingAssignment, $total);
+
+        if (!$this->config->isEnabled((int)$quote->getStoreId())) {
+            return $this;
+        }
 
         $items = $shippingAssignment->getItems();
 
@@ -234,7 +241,7 @@ class MultiCoupon extends AbstractTotal
         return array_values(array_unique($ordered));
     }
 
-       /**
+    /**
      * Return the best applicable discount result for a single quote item.
      *
      * OFFER codes take precedence over DEAL codes on the same item.
