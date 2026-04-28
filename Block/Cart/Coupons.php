@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 namespace Merlin\MultiCoupon\Block\Cart;
 
-use Magento\Framework\View\Element\Template;
-use Magento\Quote\Model\QuoteIdMaskFactory;
 use Magento\Checkout\Model\Session as CheckoutSession;
+use Magento\Framework\View\Element\Template;
 use Merlin\MultiCoupon\Model\Config;
 use Merlin\MultiCoupon\Model\QuoteCouponStorage;
 
@@ -29,12 +28,26 @@ class Coupons extends Template
     }
 
     /**
+     * Determine whether the multi-coupon block should be shown.
+     *
+     * @return bool
+     */
+    public function canShow(): bool
+    {
+        return $this->config->isEnabled((int)$this->_storeManager->getStore()->getId());
+    }
+
+    /**
      * Return the currently applied codes for the active cart.
      *
      * @return string[]
      */
     public function getAppliedCodes(): array
     {
+        if (!$this->canShow()) {
+            return [];
+        }
+
         $quote = $this->checkoutSession->getQuote();
         if (!$quote || !$quote->getId()) {
             return [];
@@ -50,6 +63,10 @@ class Coupons extends Template
      */
     public function getAllowedCodes(): array
     {
+        if (!$this->canShow()) {
+            return [];
+        }
+
         return $this->config->getAllowedCodes();
     }
 
@@ -81,5 +98,19 @@ class Coupons extends Template
     public function getClearUrl(): string
     {
         return $this->getUrl('multicoupon/cart/clearCoupons');
+    }
+
+    /**
+     * Suppress block output when the module is disabled.
+     *
+     * @return string
+     */
+    protected function _toHtml(): string
+    {
+        if (!$this->canShow()) {
+            return '';
+        }
+
+        return parent::_toHtml();
     }
 }
