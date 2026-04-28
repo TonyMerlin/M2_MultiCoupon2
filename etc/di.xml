@@ -14,4 +14,21 @@
         <plugin name="merlin_multi_coupon_totals_extension_attributes"
                 type="Merlin\MultiCoupon\Plugin\Checkout\CartTotalRepositoryPlugin"/>
     </type>
+
+    <virtualType name="Merlin\MultiCoupon\Model\ResourceModel\Code\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">merlin_multicoupon_code</argument>
+            <argument name="resourceModel" xsi:type="string">Merlin\MultiCoupon\Model\ResourceModel\Code</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="merlin_multicoupon_code_listing_data_source" xsi:type="string">Merlin\MultiCoupon\Model\ResourceModel\Code\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
 </config>
