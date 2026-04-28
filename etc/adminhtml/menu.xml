@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Merlin_MultiCoupon::root"
+             title="Merlin"
+             module="Merlin_MultiCoupon"
+             sortOrder="900"
+             resource="Magento_Backend::admin"/>
+
+        <add id="Merlin_MultiCoupon::multicoupon"
+             title="Multi Coupon"
+             module="Merlin_MultiCoupon"
+             sortOrder="10"
+             parent="Merlin_MultiCoupon::root"
+             resource="Merlin_MultiCoupon::config"/>
+
+        <add id="Merlin_MultiCoupon::codes"
+             title="Allowed Deal Codes"
+             module="Merlin_MultiCoupon"
+             sortOrder="10"
+             parent="Merlin_MultiCoupon::multicoupon"
+             action="merlin_multicoupon/code/index"
+             resource="Merlin_MultiCoupon::codes"/>
+
+        <add id="Merlin_MultiCoupon::settings"
+             title="Settings"
+             module="Merlin_MultiCoupon"
+             sortOrder="20"
+             parent="Merlin_MultiCoupon::multicoupon"
+             action="adminhtml/system_config/edit/section/merlin_multicoupon"
+             resource="Merlin_MultiCoupon::config"/>
+    </menu>
+</config>
