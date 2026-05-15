@@ -10,45 +10,28 @@ use Magento\Quote\Model\Quote\Address;
 use Magento\Quote\Model\Quote\Address\Total;
 use Magento\Quote\Model\Quote\Address\Total\AbstractTotal;
 use Magento\Quote\Model\Quote\Item\AbstractItem;
-use Merlin\MultiCoupon\Model\Config;
 use Merlin\MultiCoupon\Model\QuoteCouponStorage;
 use Merlin\MultiCoupon\Model\RuleRepository;
 use Psr\Log\LoggerInterface;
 
-/**
- * Custom quote total for Merlin multi-coupon discounts.
- */
 class MultiCoupon extends AbstractTotal
 {
-    /**
-     * @param QuoteCouponStorage $quoteCouponStorage
-     * @param RuleRepository $ruleRepository
-     * @param ItemRuleMatcher $itemRuleMatcher
-     * @param Calculator $calculator
-     * @param PriceCurrencyInterface $priceCurrency
-     * @param LoggerInterface $logger
-     * @param Config $config
-     */
     public function __construct(
         private readonly QuoteCouponStorage $quoteCouponStorage,
         private readonly RuleRepository $ruleRepository,
         private readonly ItemRuleMatcher $itemRuleMatcher,
         private readonly Calculator $calculator,
         private readonly PriceCurrencyInterface $priceCurrency,
-        private readonly LoggerInterface $logger,
-        private readonly Config $config
+        private readonly LoggerInterface $logger
     ) {
-        $this->setCode('merlin_multi_coupon_discount');
+        /*
+         * IMPORTANT:
+         * Use Magento's native discount code so discount_amount survives into
+         * order/invoice/payment flows.
+         */
+        $this->setCode('discount');
     }
 
-    /**
-     * Collect and apply the best matching allowed coupon discount per item.
-     *
-     * @param Quote $quote
-     * @param ShippingAssignmentInterface $shippingAssignment
-     * @param Total $total
-     * @return $this
-     */
     public function collect(
         Quote $quote,
         ShippingAssignmentInterface $shippingAssignment,
@@ -56,12 +39,7 @@ class MultiCoupon extends AbstractTotal
     ): self {
         parent::collect($quote, $shippingAssignment, $total);
 
-        if (!$this->config->isEnabled((int)$quote->getStoreId())) {
-            return $this;
-        }
-
         $items = $shippingAssignment->getItems();
-
         if (!$items || !$quote->getItemsCount()) {
             return $this;
         }
@@ -92,7 +70,6 @@ class MultiCoupon extends AbstractTotal
             }
 
             $best = $this->getBestDiscountForItem($quote, $item, $codes);
-
             if ($best['base_amount'] <= 0.0001) {
                 continue;
             }
@@ -127,33 +104,115 @@ class MultiCoupon extends AbstractTotal
         $total->setTotalAmount($this->getCode(), -$discountTotal);
         $total->setBaseTotalAmount($this->getCode(), -$baseDiscountTotal);
 
-        $total->setDiscountAmount((float)$total->getDiscountAmount() - $discountTotal);
-        $total->setBaseDiscountAmount((float)$total->getBaseDiscountAmount() - $baseDiscountTotal);
+        /*
+         * Set native discount fields directly, not cumulatively, so invoice/order
+         * generation reads the real discount.
+         */
+        $total->setDiscountAmount(-$discountTotal);
+        $total->setBaseDiscountAmount(-$baseDiscountTotal);
+
+        $subtotalWithDiscount = (float)$total->getSubtotal() - $discountTotal;
+        $baseSubtotalWithDiscount = (float)$total->getBaseSubtotal() - $baseDiscountTotal;
+
+        $total->setSubtotalWithDiscount($subtotalWithDiscount);
+        $total->setBaseSubtotalWithDiscount($baseSubtotalWithDiscount);
+
+        $description = implode(', ', array_values($appliedCodes));
 
         if ($address instanceof Address) {
-            $description = implode(', ', array_values($appliedCodes));
             $address->setDiscountDescription($description);
-            $address->setDiscountAmount((float)$address->getDiscountAmount() - $discountTotal);
-            $address->setBaseDiscountAmount((float)$address->getBaseDiscountAmount() - $baseDiscountTotal);
+            $address->setDiscountAmount(-$discountTotal);
+            $address->setBaseDiscountAmount(-$baseDiscountTotal);
+            $address->setSubtotalWithDiscount($subtotalWithDiscount);
+            $address->setBaseSubtotalWithDiscount($baseSubtotalWithDiscount);
+        }
+
+        /*
+         * Also mirror discount values onto the real quote address model that
+         * payment/invoice exporters tend to read from.
+         */
+        $quoteAddress = $quote->isVirtual()
+            ? $quote->getBillingAddress()
+            : $quote->getShippingAddress();
+
+        if ($quoteAddress instanceof Address) {
+            $quoteAddress->setDiscountDescription($description);
+            $quoteAddress->setDiscountAmount(-$discountTotal);
+            $quoteAddress->setBaseDiscountAmount(-$baseDiscountTotal);
+            $quoteAddress->setSubtotalWithDiscount($subtotalWithDiscount);
+            $quoteAddress->setBaseSubtotalWithDiscount($baseSubtotalWithDiscount);
         }
 
         $quote->setData(QuoteCouponStorage::FIELD, implode(',', $codes));
         $quote->setAppliedRuleIds(implode(',', array_map('strval', array_values($appliedRuleIds))));
+        $quote->setDiscountAmount(-$discountTotal);
+        $quote->setBaseDiscountAmount(-$baseDiscountTotal);
+        $quote->setSubtotalWithDiscount($subtotalWithDiscount);
+        $quote->setBaseSubtotalWithDiscount($baseSubtotalWithDiscount);
+
+        $this->logger->debug('MC collect final totals', [
+            'quote_id' => $quote->getId(),
+            'code' => $this->getCode(),
+            'codes' => $codes,
+            'base_discount_total' => $baseDiscountTotal,
+            'discount_total' => $discountTotal,
+            'total_discount_amount' => $total->getDiscountAmount(),
+            'total_base_discount_amount' => $total->getBaseDiscountAmount(),
+            'total_subtotal' => $total->getSubtotal(),
+            'total_base_subtotal' => $total->getBaseSubtotal(),
+            'total_tax' => $total->getTaxAmount(),
+            'total_base_tax' => $total->getBaseTaxAmount(),
+            'total_shipping' => $total->getShippingAmount(),
+            'total_base_shipping' => $total->getBaseShippingAmount(),
+            'total_grand' => $total->getGrandTotal(),
+            'total_base_grand' => $total->getBaseGrandTotal(),
+            'quote_discount_amount' => $quote->getDiscountAmount(),
+            'quote_base_discount_amount' => $quote->getBaseDiscountAmount(),
+            'quote_subtotal_with_discount' => $quote->getSubtotalWithDiscount(),
+            'quote_base_subtotal_with_discount' => $quote->getBaseSubtotalWithDiscount(),
+            'quote_address_discount_amount' => $quoteAddress instanceof Address ? $quoteAddress->getDiscountAmount() : null,
+            'quote_address_base_discount_amount' => $quoteAddress instanceof Address ? $quoteAddress->getBaseDiscountAmount() : null,
+            'quote_address_subtotal_with_discount' => $quoteAddress instanceof Address ? $quoteAddress->getSubtotalWithDiscount() : null,
+            'quote_address_base_subtotal_with_discount' => $quoteAddress instanceof Address ? $quoteAddress->getBaseSubtotalWithDiscount() : null,
+        ]);
+
+        @file_put_contents(
+            BP . '/var/log/merlin_multicoupon_collect.log',
+            print_r([
+                'quote_id' => $quote->getId(),
+                'code' => $this->getCode(),
+                'codes' => $codes,
+                'base_discount_total' => $baseDiscountTotal,
+                'discount_total' => $discountTotal,
+                'total_discount_amount' => $total->getDiscountAmount(),
+                'total_base_discount_amount' => $total->getBaseDiscountAmount(),
+                'total_subtotal' => $total->getSubtotal(),
+                'total_base_subtotal' => $total->getBaseSubtotal(),
+                'total_tax' => $total->getTaxAmount(),
+                'total_base_tax' => $total->getBaseTaxAmount(),
+                'total_shipping' => $total->getShippingAmount(),
+                'total_base_shipping' => $total->getBaseShippingAmount(),
+                'total_grand' => $total->getGrandTotal(),
+                'total_base_grand' => $total->getBaseGrandTotal(),
+                'quote_discount_amount' => $quote->getDiscountAmount(),
+                'quote_base_discount_amount' => $quote->getBaseDiscountAmount(),
+                'quote_subtotal_with_discount' => $quote->getSubtotalWithDiscount(),
+                'quote_base_subtotal_with_discount' => $quote->getBaseSubtotalWithDiscount(),
+                'quote_address_discount_amount' => $quoteAddress instanceof Address ? $quoteAddress->getDiscountAmount() : null,
+                'quote_address_base_discount_amount' => $quoteAddress instanceof Address ? $quoteAddress->getBaseDiscountAmount() : null,
+                'quote_address_subtotal_with_discount' => $quoteAddress instanceof Address ? $quoteAddress->getSubtotalWithDiscount() : null,
+                'quote_address_base_subtotal_with_discount' => $quoteAddress instanceof Address ? $quoteAddress->getBaseSubtotalWithDiscount() : null,
+            ], true) . "\n----------------------\n",
+            FILE_APPEND
+        );
 
         return $this;
     }
 
-    /**
-     * Return the total row metadata for the multi-coupon discount.
-     *
-     * @param Quote $quote
-     * @param Total $total
-     * @return array<string, mixed>
-     */
     public function fetch(Quote $quote, Total $total): array
     {
         $codes = $this->quoteCouponStorage->getCodes($quote);
-        $discountAmount = (float)$total->getTotalAmount($this->getCode());
+        $discountAmount = (float)$total->getDiscountAmount();
 
         if (!$codes || abs($discountAmount) < 0.0001) {
             return [];
@@ -166,15 +225,6 @@ class MultiCoupon extends AbstractTotal
         ];
     }
 
-    /**
-     * Reset this module's custom discount amounts before re-collecting.
-     *
-     * @param Quote $quote
-     * @param ShippingAssignmentInterface $shippingAssignment
-     * @param Total $total
-     * @param AbstractItem[] $items
-     * @return void
-     */
     private function resetAddressTotals(
         Quote $quote,
         ShippingAssignmentInterface $shippingAssignment,
@@ -183,6 +233,8 @@ class MultiCoupon extends AbstractTotal
     ): void {
         $total->setTotalAmount($this->getCode(), 0.0);
         $total->setBaseTotalAmount($this->getCode(), 0.0);
+        $total->setDiscountAmount(0.0);
+        $total->setBaseDiscountAmount(0.0);
 
         foreach ($items as $item) {
             if ($item->getParentItem()) {
@@ -201,20 +253,11 @@ class MultiCoupon extends AbstractTotal
             $address->setDiscountAmount(0.0);
             $address->setBaseDiscountAmount(0.0);
             $address->setDiscountDescription(null);
+            $address->setSubtotalWithDiscount(null);
+            $address->setBaseSubtotalWithDiscount(null);
         }
     }
 
-    /**
-     * Retain only codes that are currently the winning code for at least one item.
-     *
-     * This matches the actual pricing engine behaviour and prevents stale overlap
-     * codes from lingering after basket changes.
-     *
-     * @param Quote $quote
-     * @param AbstractItem[] $items
-     * @param string[] $codes
-     * @return string[]
-     */
     private function getRetainedCodesForItems(Quote $quote, array $items, array $codes): array
     {
         $retained = [];
@@ -225,7 +268,6 @@ class MultiCoupon extends AbstractTotal
             }
 
             $best = $this->getBestDiscountForItem($quote, $item, $codes);
-
             if ($best['code'] !== '') {
                 $retained[$best['code']] = $best['code'];
             }
@@ -241,17 +283,6 @@ class MultiCoupon extends AbstractTotal
         return array_values(array_unique($ordered));
     }
 
-    /**
-     * Return the best applicable discount result for a single quote item.
-     *
-     * OFFER codes take precedence over DEAL codes on the same item.
-     * Within the same code class, the higher discount wins.
-     *
-     * @param Quote $quote
-     * @param AbstractItem $item
-     * @param string[] $codes
-     * @return array{code:string,rule_id:int,base_amount:float,amount:float}
-     */
     private function getBestDiscountForItem(Quote $quote, AbstractItem $item, array $codes): array
     {
         $best = [
