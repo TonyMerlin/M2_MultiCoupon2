@@ -2,6 +2,15 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
 
+<preference for="Magento\Paypal\Model\Api\Nvp"
+            type="Merlin\MultiCoupon\Model\Paypal\Api\Nvp"/>
+
+<type name="Magento\Paypal\Model\Cart">
+    <plugin name="merlin_multicoupon_paypal_cart_amounts"
+            type="Merlin\MultiCoupon\Plugin\Paypal\CartPlugin"
+            sortOrder="10"/>
+</type>
+
     <type name="Magento\Checkout\Model\CompositeConfigProvider">
         <arguments>
             <argument name="configProviders" xsi:type="array">
