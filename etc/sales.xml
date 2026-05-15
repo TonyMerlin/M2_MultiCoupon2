@@ -5,7 +5,7 @@
         <group name="totals">
             <item name="merlin_multi_coupon_discount"
                   instance="Merlin\MultiCoupon\Model\Discount\MultiCoupon"
-                  sort_order="300"/>
+                  sort_order="310"/>
         </group>
     </section>
 </config>
