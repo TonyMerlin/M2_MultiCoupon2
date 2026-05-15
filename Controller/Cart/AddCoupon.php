@@ -12,6 +12,7 @@ use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\DataObject;
 use Magento\Framework\Exception\LocalizedException;
+use Magento\Store\Model\StoreManagerInterface;
 use Merlin\MultiCoupon\Model\Config;
 use Merlin\MultiCoupon\Model\Discount\ItemRuleMatcher;
 use Merlin\MultiCoupon\Model\PromoCodeResolver;
@@ -30,7 +31,8 @@ class AddCoupon extends Action
         private readonly RuleRepository $ruleRepository,
         private readonly ItemRuleMatcher $itemRuleMatcher,
         private readonly ProductRepositoryInterface $productRepository,
-        private readonly PromoCodeResolver $promoCodeResolver
+        private readonly PromoCodeResolver $promoCodeResolver,
+        private readonly StoreManagerInterface $storeManager
     ) {
         parent::__construct($context);
     }
@@ -44,7 +46,9 @@ class AddCoupon extends Action
         $productId = (int)$this->getRequest()->getParam('product_id');
 
         $quote = $this->checkoutSession->getQuote();
-        $storeId = $quote && $quote->getId() ? (int)$quote->getStoreId() : (int)$this->_storeManager->getStore()->getId();
+        $storeId = ($quote && $quote->getId())
+            ? (int)$quote->getStoreId()
+            : (int)$this->storeManager->getStore()->getId();
 
         if (!$this->config->isEnabled($storeId)) {
             $this->messageManager->addErrorMessage(__('Multi coupon is currently disabled.'));
